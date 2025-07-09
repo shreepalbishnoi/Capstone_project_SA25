@@ -1,100 +1,64 @@
-# Capstone_project_SA25
-Final project on Real-Time Dynamic Pricing for Urban Parking
+# Real-Time Dynamic Pricing for Urban Parking
 
-This project implements a real-time dynamic pricing engine for a network of 14 urban parking lots. The system adjusts parking prices based on live data streams, including vehicle traffic, occupancy, queue lengths, and special events, to optimize space utilization and revenue. The entire pipeline, from data ingestion to live visualization, is built to handle streaming data and provide instantaneous pricing updates.
+This project implements a **real-time dynamic pricing engine** for a network of 14 urban parking lots. It adjusts parking prices based on **live data streams** such as vehicle traffic, occupancy, queue lengths, and special events — helping optimize **space utilization and revenue**.
 
-#Tech Stack
+📍 Developed and tested in **Google Colab**, the pipeline handles streaming data from CSV files, processes it in real-time using **Pathway**, and renders live updates using **Bokeh**.
 
-Core Language: Python 3.10
+--
 
-Real-Time Data Processing: Pathway - A reactive data processing framework for building real-time machine learning and data pipelines.
+## Tech Stack
 
-Data Manipulation: Pandas & NumPy - For efficient in-memory data transformation and numerical computation within the pricing UDF.
+| Category                | Tools & Libraries               |
+|-------------------------|---------------------------------|
+|  Language             | Python 3.10                      |
+|  Real-Time Processing | [Pathway](https://pathway.com) |
+|  Data Manipulation    | Pandas, NumPy                   |
+|  Visualization        | Bokeh                          |
+|  Environment          | Google Colab                   |
 
-Real-Time Visualization: Bokeh - For creating interactive, real-time plots that update dynamically in a web browser or notebook.
+--
 
-Development Environment: Google Colab         
+##  Project Workflow
 
-Detailed Workflow Explanation
-Data Ingestion (Simulated Stream):
-The pipeline starts by reading the dataset.csv file using Pathway's pw.io.csv.read connector, configured in 'streaming' mode.
+###  1. Data Ingestion (Simulated Stream)
 
-This effectively simulates a real-time data feed, where each row of the CSV is treated as a new event arriving in the stream.
+- Read the `dataset.csv` using `pw.io.csv.read()` in **streaming mode**.
+- Each row simulates a real-time event.
+- Data is validated via a `ParkingInputStream` schema.
 
-A ParkingInputStream schema is defined to enforce data types and structure on the incoming data, ensuring pipeline robustness.
+###  2. Real-Time Processing with Pathway + Pandas UDF
 
-Real-Time Processing with Pathway & Pandas UDF:
+- A **User-Defined Function** `calculate_dynamic_price_udf` runs on micro-batches of DataFrames.
+- Features like `occupancy_rate` and `traffic_weight` are engineered.
+- Demand score is computed using:
+  - Occupancy
+  - Queue Length
+  - Traffic
+  - Special Day
+  - Vehicle Type
+- Final dynamic price = `BASE_PRICE × f(demand)`  
+  (Normalized via `np.tanh` and clipped to safe range)
 
-The core of the pricing logic is encapsulated in a User-Defined Function (UDF) named calculate_dynamic_price_udf, which is designed to work with pandas DataFrames.
+###  3. Live Visualization with Bokeh
 
-Pathway automatically micro-batches the incoming data stream into small DataFrames. The .map() method applies our UDF to each of these batches.
+- A `Bokeh` plot dynamically updates via:
+  - `ColumnDataSource.stream()`
+  - `push_notebook()` for smooth real-time rendering.
+- Prices for 14 parking lots are shown updating for 60 seconds.
 
-Inside the UDF:
+---
 
-Feature Engineering: New features like occupancy_rate are calculated (Occupancy / Capacity). Categorical data like TrafficConditionNearby is mapped to numerical weights.
+##  How to Run the Project
 
-Demand Calculation: A demand score is computed using a weighted linear combination of several factors:
+### Prerequisites
 
-occupancy_rate: Higher occupancy increases demand.
+- A **Google Account** to access Google Colab
 
-QueueLength: Longer queues signify higher demand.
+### Setup
 
-traffic_weight: Heavy traffic slightly reduces demand (as it might deter parkers).
+1. **Open the notebook** in Google Colab  
+2. **Upload `dataset.csv`** from your computer using the "Files" panel  
+3. **Install dependencies** using the following cell:
 
-IsSpecialDay: Special days (holidays, events) increase demand.
-
-vehicle_weight: Heavier/larger vehicles have a slightly higher impact.
-
-Price Calculation: The calculated demand score is normalized using np.tanh to keep it within a predictable range (-1 to 1). This normalized demand is then used to adjust a BASE_PRICE. The final price is clipped to stay within a reasonable minimum and maximum threshold (e.g., 0.5x to 2.0x the base price).
-
-The UDF returns a new DataFrame containing the original data plus the calculated dynamic_price and a timestamp. Pathway's .unfold() method unnests this DataFrame back into a stream of individual records.
-
-Live Visualization with Bokeh:
-
-The final, enriched stream of data is written to a Pathway output table (output_table).
-
-A separate process (a loop in the notebook) periodically queries this table to fetch the latest pricing data.
-
-A Bokeh plot is initialized with an empty ColumnDataSource.
-
-In each iteration of the update loop:
-
-The new data from the Pathway table is fetched.
-
-The source.stream() method of the Bokeh ColumnDataSource is called. This efficiently appends the new data points to the plot's data source.
-
-push_notebook() updates the plot in the Colab output cell without needing to redraw the entire figure, creating a smooth, real-time visualization of the changing prices for all 14 parking spaces.
-
-How to Run the Project
-Prerequisites:
-
-A Google Account to use Google Colab.
-
-Setup:
-
-Open the .ipynb file in Google Colab.
-
-Upload the dataset.csv file to your Colab environment. You can do this by clicking the "Files" icon on the left sidebar and selecting "Upload".
-
-Installation:
-
-Run the first code cell to install the necessary Python libraries:
-
-!pip install -q pathway bokeh
-
-Execution:
-
-Run the notebook cells sequentially from top to bottom.
-
-The script will:
-
-Define the pricing model parameters and the UDF.
-
-Initialize and run the Pathway pipeline in a background thread.
-
-Set up and display the initial Bokeh plot.
-
-Start the real-time update loop, which will populate the plot with dynamic pricing data for the next 60 seconds.
-
-Dataset Schema
-The dataset.csv contains records with the columns, representing the state of a parking lot at a specific time.
+```python
+!pip install pathway bokeh --quiet
